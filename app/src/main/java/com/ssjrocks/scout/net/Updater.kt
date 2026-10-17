@@ -173,8 +173,9 @@ object Updater {
                 file.inputStream().use { it.copyTo(out) }
                 session.fsync(out)
             }
+            // commit(), not apply(): a silent install stops this process straight after the commit below.
             ctx.getSharedPreferences("scout", Context.MODE_PRIVATE).edit()
-                .putInt("installing_code", u.versionCode).putString("installing_name", u.versionName).apply()
+                .putInt("installing_code", u.versionCode).putString("installing_name", u.versionName).commit()
             val status = Intent(ctx, UpdateReceiver::class.java).setAction(UpdateReceiver.ACTION_STATUS)
                 .putExtra(UpdateReceiver.EXTRA_VERSION, u.versionName)
             val flags = PendingIntent.FLAG_UPDATE_CURRENT or (if (Build.VERSION.SDK_INT >= 31) PendingIntent.FLAG_MUTABLE else 0)
@@ -184,20 +185,24 @@ object Updater {
     }
 
     /**
-     * Background step, run after a scheduled refresh: at most every 12 hours, look for a release,
-     * download it, and install it silently when Android allows; otherwise post a notification.
+     * Background step, run after a scheduled refresh: at most every 3 hours, look for a release,
+     * download it, and install it silently when Android allows; otherwise post a notification
+     * (once per version). Waits while Scout is on screen, since installing closes it.
      */
     suspend fun backgroundUpdate(ctx: Context, skipCode: Int) {
+        if (foreground) return
         val prefs = ctx.getSharedPreferences("scout", Context.MODE_PRIVATE)
         val now = System.currentTimeMillis()
-        if (now - prefs.getLong("update_checked_at", 0) < 12 * 3_600_000L) return
-        prefs.edit().putLong("update_checked_at", now).apply()
+        if (now - prefs.getLong("update_bg_checked_at", 0) < 3 * 3_600_000L) return
+        prefs.edit().putLong("update_bg_checked_at", now).apply()
         val u = check() ?: return
         if (u.versionCode == skipCode) return
         val file = download(ctx, u)
+        if (foreground) return
         if (canInstallSilently(ctx)) {
             install(ctx, file, u)
-        } else {
+        } else if (prefs.getInt("update_notified_code", 0) != u.versionCode) {
+            prefs.edit().putInt("update_notified_code", u.versionCode).apply()
             val open = Intent(ctx, MainActivity::class.java).setAction(MainActivity.ACTION_INSTALL_UPDATE)
             notify(ctx, "Scout ${u.versionName} is ready", "Tap to install the update", PendingIntent.getActivity(ctx, 7, open, PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT))
         }

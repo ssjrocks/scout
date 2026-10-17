@@ -274,6 +274,9 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
 
     val update = MutableStateFlow<UpdateUi>(UpdateUi.None)
 
+    /** What "Check for updates now" found, shown under it in Settings (null = not checked yet). */
+    val updateCheck = MutableStateFlow<String?>(null)
+
     init {
         viewModelScope.launch {
             val prefs = getApplication<Application>().getSharedPreferences("scout", android.content.Context.MODE_PRIVATE)
@@ -282,7 +285,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
                 snack("The last update didn't install: $err")
             }
             val now = System.currentTimeMillis()
-            if (settings.value.autoUpdate && now - prefs.getLong("update_checked_at", 0) > 6 * 3_600_000L) {
+            if (settings.value.autoUpdate && now - prefs.getLong("update_checked_at", 0) > 3_600_000L) {
                 prefs.edit().putLong("update_checked_at", now).apply()
                 runCatching { Updater.check() }.getOrNull()?.let { u ->
                     if (u.versionCode != settings.value.skipUpdateCode) update.value = UpdateUi.Available(u)
@@ -303,20 +306,28 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
 
     /** From Settings: always asks GitHub, ignoring "Not now" and the check interval. */
     fun checkForUpdate(installIfFound: Boolean = false) {
+        if (updateCheck.value == CHECKING) return
+        updateCheck.value = CHECKING
         viewModelScope.launch {
+            val at = java.text.DateFormat.getTimeInstance(java.text.DateFormat.SHORT).format(java.util.Date())
             try {
                 val u = Updater.check()
                 if (u == null) {
                     update.value = UpdateUi.None
+                    updateCheck.value = "Up to date (checked $at)"
                     snack("Scout ${com.ssjrocks.scout.BuildConfig.VERSION_NAME} is the latest version")
                 } else if (installIfFound) {
+                    updateCheck.value = null
                     installUpdate(u)
                 } else {
+                    updateCheck.value = null
                     update.value = UpdateUi.Available(u)
                     snack("Scout ${u.versionName} is available")
                 }
             } catch (e: Exception) {
-                snack("Couldn't check for updates (${e.message ?: e.javaClass.simpleName})")
+                val why = e.message ?: e.javaClass.simpleName
+                updateCheck.value = "Couldn't check at $at: $why"
+                snack("Couldn't check for updates ($why)")
             }
         }
     }
@@ -351,5 +362,9 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     fun addSource(src: Source) {
         repo.addSource(src)
         snack("Added ${src.name}")
+    }
+
+    companion object {
+        const val CHECKING = "Checking GitHub…"
     }
 }

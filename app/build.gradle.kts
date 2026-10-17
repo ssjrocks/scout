@@ -24,8 +24,8 @@ android {
         minSdk = 26
         targetSdk = 35
         // scout.versionCode/versionName/updateApi only exist to test the updater.
-        versionCode = (findProperty("scout.versionCode") as String?)?.toInt() ?: 3
-        versionName = (findProperty("scout.versionName") as String?) ?: "1.2.0"
+        versionCode = (findProperty("scout.versionCode") as String?)?.toInt() ?: 4
+        versionName = (findProperty("scout.versionName") as String?) ?: "1.2.1"
         val updateApi = (findProperty("scout.updateApi") as String?)
             ?: "https://api.github.com/repos/ssjrocks/scout/releases/latest"
         buildConfigField("String", "UPDATE_API", "\"$updateApi\"")

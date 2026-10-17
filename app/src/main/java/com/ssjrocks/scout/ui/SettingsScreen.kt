@@ -57,6 +57,8 @@ fun SettingsScreen(vm: MainViewModel) {
     val scope = rememberCoroutineScope()
     var placeOpen by remember { mutableStateOf(false) }
     var redditOpen by remember { mutableStateOf(false) }
+    val update by vm.update.collectAsStateWithLifecycle()
+    val updateCheck by vm.updateCheck.collectAsStateWithLifecycle()
 
     fun msg(t: String) = vm.snack(t)
 
@@ -221,11 +223,11 @@ fun SettingsScreen(vm: MainViewModel) {
             item {
                 SwitchRow(
                     "Update automatically",
-                    "Checks GitHub for new releases and installs them in the background (needs background refresh on)",
+                    "Checks GitHub every few hours and installs new versions in the background while Scout isn't open (needs background refresh on)",
                     s.autoUpdate,
                 ) { v -> vm.repo.update { it.copy(autoUpdate = v) } }
             }
-            item { ClickRow("Check for updates now", "You have Scout ${BuildConfig.VERSION_NAME}") { msg("Checking GitHub…"); vm.checkForUpdate() } }
+            item { UpdateRow(update, updateCheck, vm) }
             item { ClickRow("Release notes and downloads", "github.com/ssjrocks/scout/releases") { Links.openExternal(ctx, com.ssjrocks.scout.net.Updater.RELEASES_PAGE) } }
 
             item { SectionTitle("Backup") }
@@ -351,4 +353,23 @@ private fun PlaceDialog(vm: MainViewModel, onDismiss: () -> Unit) {
         },
         confirmButton = { TextButton(onClick = onDismiss) { Text("Close") } },
     )
+}
+
+/** "Check for updates now", which turns into the install button and its progress once there is one. */
+@Composable
+private fun UpdateRow(state: UpdateUi, check: String?, vm: MainViewModel) {
+    val mine = "You have Scout ${BuildConfig.VERSION_NAME}"
+    when (state) {
+        UpdateUi.None ->
+            ClickRow("Check for updates now", if (check == null) mine else "$mine · $check") { vm.checkForUpdate() }
+        is UpdateUi.Available ->
+            ClickRow("Install Scout ${state.update.versionName}", "$mine · tap to update") { vm.installUpdate(state.update) }
+        is UpdateUi.Downloading ->
+            ClickRow("Downloading Scout ${state.update.versionName}…", "${(state.progress * 100).toInt()}%") {}
+        is UpdateUi.Installing ->
+            if (state.silent) ClickRow("Installing Scout ${state.update.versionName}…", "Scout will close for a moment, and a notification says when it's updated") {}
+            else ClickRow("Confirm the update on Android's screen", "No prompt? Tap to try again") { vm.installUpdate(state.update) }
+        is UpdateUi.Failed ->
+            ClickRow("Scout ${state.update.versionName} didn't install", "${state.message} · tap to try again") { vm.installUpdate(state.update) }
+    }
 }

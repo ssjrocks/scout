@@ -16,6 +16,8 @@ import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Bookmark
 import androidx.compose.material.icons.filled.Explore
@@ -41,6 +43,7 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
@@ -144,7 +147,7 @@ fun App(vm: MainViewModel) {
 
             Box(Modifier.fillMaxSize()) {
                 Scaffold(
-                    snackbarHost = { SnackbarHost(snackHost) },
+                    snackbarHost = { if (top == null) SnackbarHost(snackHost) },
                     containerColor = MaterialTheme.colorScheme.background,
                     bottomBar = {
                         NavigationBar(containerColor = MaterialTheme.colorScheme.surfaceContainer) {
@@ -181,6 +184,10 @@ fun App(vm: MainViewModel) {
                             }
                         }
                     }
+                }
+                // Settings, Search and Reader cover the Scaffold, so their messages show up here.
+                if (top != null) {
+                    SnackbarHost(snackHost, Modifier.align(Alignment.BottomCenter).navigationBarsPadding().imePadding())
                 }
             }
         }
