@@ -45,6 +45,15 @@ Scout updates itself from this repo's releases (Settings → App updates):
 - In the app, an update banner shows the release notes, with Update / Not now. "Update
   automatically" can be turned off; updates then only show as a banner.
 
+## Crash reports
+
+From 1.2.0, if Scout crashes or freezes it sends a report the next time it opens, to
+`https://ssjrocks.com/api/reports/` (the shared reporter from
+[ssjrocks/app-reports](https://github.com/ssjrocks/app-reports)). A report holds the error and stack
+trace, Scout's recent log lines, the phone model and Android version, the app version and a random
+install id. It doesn't include what you read, follow or block. **Settings → About → Report a problem**
+sends the same with your note.
+
 ## Source quirks (measured Oct 2026)
 
 - **Reddit** allows only a few anonymous RSS requests a minute per IP, so without an API ID each
