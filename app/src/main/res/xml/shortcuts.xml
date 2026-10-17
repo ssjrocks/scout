@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<shortcuts xmlns:android="http://schemas.android.com/apk/res/android">
+    <shortcut android:shortcutId="search" android:enabled="true" android:icon="@drawable/ic_google_g"
+        android:shortcutShortLabel="@string/shortcut_search">
+        <intent android:action="com.ssjrocks.scout.SEARCH" android:targetPackage="com.ssjrocks.scout"
+            android:targetClass="com.ssjrocks.scout.ui.MainActivity" />
+    </shortcut>
+</shortcuts>

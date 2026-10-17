@@ -1,0 +1,8 @@
+<resources>
+    <string name="app_name">Scout</string>
+    <string name="share_add">Add to Scout</string>
+    <string name="widget_name">Scout headlines</string>
+    <string name="widget_desc">Search bar and your top stories</string>
+    <string name="shortcut_search">Search</string>
+    <string name="shortcut_saved">Saved</string>
+</resources>
