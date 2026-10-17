@@ -37,6 +37,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.ssjrocks.appreports.AppReports
 import com.ssjrocks.scout.BuildConfig
 import com.ssjrocks.scout.data.Catalog
 import com.ssjrocks.scout.data.Opml
@@ -240,6 +241,12 @@ fun SettingsScreen(vm: MainViewModel) {
                     "Scout ${BuildConfig.VERSION_NAME}",
                     "${srcs.count { it.enabled }} sources on · ${items.size} stories stored · font: Google Sans Flex (SIL Open Font License)",
                 ) {}
+            }
+            item {
+                ClickRow("Report a problem", "Sends the recent app log so it can be looked into") {
+                    val srcs = vm.repo.allSources(s)
+                    AppReports.showReportDialog(ctx, mapOf("sourcesOn" to srcs.count { it.enabled }, "stories" to items.size))
+                }
             }
         }
     }
