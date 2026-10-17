@@ -131,6 +131,10 @@ data class Settings(
     // Alerts
     val alertsEnabled: Boolean = false,
     val alertWords: List<String> = listOf("RTX 5080", "Claude Code", "Meshtastic", "Logan"),
+    // App updates from GitHub releases
+    val autoUpdate: Boolean = true,
+    /** Version code the user said "Not now" to (not offered again or auto-installed). */
+    val skipUpdateCode: Int = 0,
     // Reddit's "installed app" client ID, for the official API (optional)
     val redditClientId: String = "",
     // Search

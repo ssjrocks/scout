@@ -20,6 +20,8 @@ import com.ssjrocks.scout.R
 import com.ssjrocks.scout.ScoutApp
 import com.ssjrocks.scout.data.Repo
 import com.ssjrocks.scout.data.Settings
+import com.ssjrocks.scout.net.Updater
+import android.util.Log
 import com.ssjrocks.scout.rank.Ranker
 import com.ssjrocks.scout.ui.MainActivity
 import java.util.concurrent.TimeUnit
@@ -30,6 +32,12 @@ class RefreshWorker(context: Context, params: WorkerParameters) : CoroutineWorke
         val repo = (applicationContext as ScoutApp).repo
         runCatching { repo.refresh(waitForReddit = true) }.getOrElse { return Result.retry() }
         if (repo.settings.value.alertsEnabled) notifyMatches(applicationContext, repo)
+        // Last, because a silent update install stops this process.
+        val s = repo.settings.value
+        if (s.autoUpdate) {
+            runCatching { Updater.backgroundUpdate(applicationContext, s.skipUpdateCode) }
+                .onFailure { Log.w("ScoutUpdate", "background update failed: $it") }
+        }
         return Result.success()
     }
 

@@ -72,6 +72,7 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.ssjrocks.scout.data.Catalog
 import com.ssjrocks.scout.data.Settings
+import com.ssjrocks.scout.net.AppUpdate
 import com.ssjrocks.scout.net.Weather
 import com.ssjrocks.scout.net.WeatherApi
 import com.ssjrocks.scout.rank.Entry
@@ -90,6 +91,7 @@ fun FeedScreen(vm: MainViewModel, padding: PaddingValues) {
     val weather by vm.repo.weather.collectAsStateWithLifecycle()
     val ready by vm.ready.collectAsStateWithLifecycle()
     val lastRefresh by vm.repo.lastRefresh.collectAsStateWithLifecycle()
+    val update by vm.update.collectAsStateWithLifecycle()
     val listState = rememberLazyListState()
     val scope = rememberCoroutineScope()
     var menuFor by remember { mutableStateOf<Entry?>(null) }
@@ -152,6 +154,9 @@ fun FeedScreen(vm: MainViewModel, padding: PaddingValues) {
                     )
                 }
                 item("chips") { ModeChips(s, mode, vm::setMode) }
+                if (update != UpdateUi.None) {
+                    item("update") { UpdateCard(update, onInstall = vm::installUpdate, onSkip = vm::skipUpdate, onNotes = { Links.open(ctx, it, s, dark) }) }
+                }
                 if (s.showWelcome && mode == Mode.ForYou) {
                     item("welcome") {
                         WelcomeCard(
@@ -306,6 +311,68 @@ private fun ModeChips(s: Settings, mode: Mode, onMode: (Mode) -> Unit) {
                     selectedLabelColor = MaterialTheme.colorScheme.onSecondaryContainer,
                 ),
             )
+        }
+    }
+}
+
+@Composable
+private fun UpdateCard(state: UpdateUi, onInstall: (AppUpdate) -> Unit, onSkip: (AppUpdate) -> Unit, onNotes: (String) -> Unit) {
+    val u = when (state) {
+        is UpdateUi.Available -> state.update
+        is UpdateUi.Downloading -> state.update
+        is UpdateUi.Installing -> state.update
+        is UpdateUi.Failed -> state.update
+        UpdateUi.None -> return
+    }
+    var showNotes by remember { mutableStateOf(false) }
+    Surface(
+        shape = RoundedCornerShape(20.dp), color = MaterialTheme.colorScheme.secondaryContainer,
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+    ) {
+        Column(Modifier.padding(18.dp)) {
+            Text("Scout ${u.versionName} is available", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSecondaryContainer)
+            Text(
+                "Released ${u.published}" + if (u.size > 0) " · ${"%.1f".format(u.size / 1_048_576.0)} MB" else "",
+                style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSecondaryContainer,
+            )
+            if (u.notes.isNotBlank()) {
+                Spacer(Modifier.height(6.dp))
+                Text(
+                    u.notes, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSecondaryContainer,
+                    maxLines = if (showNotes) 40 else 3, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                    modifier = Modifier.clickable { showNotes = !showNotes },
+                )
+            }
+            Spacer(Modifier.height(8.dp))
+            when (state) {
+                is UpdateUi.Downloading -> {
+                    LinearProgressIndicator(progress = { state.progress }, modifier = Modifier.fillMaxWidth())
+                    Text("Downloading… ${(state.progress * 100).toInt()}%", style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(top = 4.dp))
+                }
+                is UpdateUi.Installing -> {
+                    Text(
+                        if (state.silent) "Installing… Scout will close for a moment and a notification will say when it's updated."
+                        else "Confirm the update on the next screen. The first time, Android asks you to allow Scout to install " +
+                            "updates: switch it on, then go back.",
+                        style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSecondaryContainer,
+                    )
+                    if (!state.silent) {
+                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                            TextButton(onClick = { onInstall(u) }) { Text("No prompt? Try again") }
+                        }
+                    }
+                }
+                else -> {
+                    if (state is UpdateUi.Failed) {
+                        Text("Didn't install: ${state.message}", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.error)
+                    }
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                        TextButton(onClick = { onNotes(u.releaseUrl) }) { Text("What's new") }
+                        TextButton(onClick = { onSkip(u) }) { Text("Not now") }
+                        Button(onClick = { onInstall(u) }) { Text(if (state is UpdateUi.Failed) "Try again" else "Update") }
+                    }
+                }
+            }
         }
     }
 }

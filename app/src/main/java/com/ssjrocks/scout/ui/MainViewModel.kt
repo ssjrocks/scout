@@ -9,7 +9,9 @@ import com.ssjrocks.scout.data.Item
 import com.ssjrocks.scout.data.ItemState
 import com.ssjrocks.scout.data.Settings
 import com.ssjrocks.scout.data.Source
+import com.ssjrocks.scout.net.AppUpdate
 import com.ssjrocks.scout.net.Article
+import com.ssjrocks.scout.net.Updater
 import com.ssjrocks.scout.net.Discover
 import com.ssjrocks.scout.net.Reader
 import com.ssjrocks.scout.net.Suggest
@@ -41,6 +43,14 @@ sealed interface Screen {
 }
 
 data class Snack(val message: String, val undo: (() -> Unit)? = null)
+
+sealed interface UpdateUi {
+    data object None : UpdateUi
+    data class Available(val update: AppUpdate) : UpdateUi
+    data class Downloading(val update: AppUpdate, val progress: Float) : UpdateUi
+    data class Installing(val update: AppUpdate, val silent: Boolean) : UpdateUi
+    data class Failed(val update: AppUpdate, val message: String) : UpdateUi
+}
 
 sealed interface ReaderState {
     data object Loading : ReaderState
@@ -258,6 +268,77 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             .mapNotNull { item -> sources[item.sourceId]?.let { Entry(item, it, Ranker.topicsOf(item, it), 0.0, state = repo.state(item.id)) } }
             .sortedByDescending { it.item.published }
             .take(15).toList()
+    }
+
+    // --- app updates ---------------------------------------------------------------------
+
+    val update = MutableStateFlow<UpdateUi>(UpdateUi.None)
+
+    init {
+        viewModelScope.launch {
+            val prefs = getApplication<Application>().getSharedPreferences("scout", android.content.Context.MODE_PRIVATE)
+            prefs.getString("update_error", null)?.let { err ->
+                prefs.edit().remove("update_error").apply()
+                snack("The last update didn't install: $err")
+            }
+            val now = System.currentTimeMillis()
+            if (settings.value.autoUpdate && now - prefs.getLong("update_checked_at", 0) > 6 * 3_600_000L) {
+                prefs.edit().putLong("update_checked_at", now).apply()
+                runCatching { Updater.check() }.getOrNull()?.let { u ->
+                    if (u.versionCode != settings.value.skipUpdateCode) update.value = UpdateUi.Available(u)
+                }
+            }
+        }
+    }
+
+    init {
+        viewModelScope.launch {
+            Updater.results.collect { (status, msg) ->
+                val cur = update.value as? UpdateUi.Installing ?: return@collect
+                update.value = if (status == android.content.pm.PackageInstaller.STATUS_FAILURE_ABORTED) UpdateUi.Available(cur.update)
+                else UpdateUi.Failed(cur.update, msg ?: "status $status")
+            }
+        }
+    }
+
+    /** From Settings: always asks GitHub, ignoring "Not now" and the check interval. */
+    fun checkForUpdate(installIfFound: Boolean = false) {
+        viewModelScope.launch {
+            try {
+                val u = Updater.check()
+                if (u == null) {
+                    update.value = UpdateUi.None
+                    snack("Scout ${com.ssjrocks.scout.BuildConfig.VERSION_NAME} is the latest version")
+                } else if (installIfFound) {
+                    installUpdate(u)
+                } else {
+                    update.value = UpdateUi.Available(u)
+                    snack("Scout ${u.versionName} is available")
+                }
+            } catch (e: Exception) {
+                snack("Couldn't check for updates (${e.message ?: e.javaClass.simpleName})")
+            }
+        }
+    }
+
+    fun skipUpdate(u: AppUpdate) {
+        repo.update { it.copy(skipUpdateCode = u.versionCode) }
+        update.value = UpdateUi.None
+    }
+
+    fun installUpdate(u: AppUpdate) {
+        val ctx = getApplication<Application>()
+        viewModelScope.launch {
+            try {
+                update.value = UpdateUi.Downloading(u, 0f)
+                val file = Updater.download(ctx, u) { p -> update.value = UpdateUi.Downloading(u, p) }
+                val silent = Updater.canInstallSilently(ctx)
+                update.value = UpdateUi.Installing(u, silent)
+                withContext(Dispatchers.IO) { Updater.install(ctx, file, u) }
+            } catch (e: Exception) {
+                update.value = UpdateUi.Failed(u, e.message ?: e.javaClass.simpleName)
+            }
+        }
     }
 
     // --- sources -------------------------------------------------------------------------

@@ -31,6 +31,20 @@ Everything runs on the phone: no server, no account. Built 2026-10-17.
 - **Settings**: light/dark/black/system theme, wallpaper colours, text size, images
   always/Wi-Fi/never, story retention, settings backup/restore (JSON), OPML import/export.
 
+## Updates
+
+Scout updates itself from this repo's releases (Settings → App updates):
+
+- It checks the latest release when you open the app (at most every 6 hours) and after background
+  refreshes (at most every 12 hours). Each release has `scout.apk` and `scout.json` (versionCode,
+  versionName, SHA-256). The APK must come from github.com and match the checksum, and Android only
+  installs it over Scout if it's signed with the same key.
+- The first update asks for confirmation, and Android asks once to allow Scout to install apps.
+  After that (Android 12+, once Scout installed the version you're running) updates install
+  silently in the background and a notification says when Scout was updated.
+- In the app, an update banner shows the release notes, with Update / Not now. "Update
+  automatically" can be turned off; updates then only show as a banner.
+
 ## Source quirks (measured Oct 2026)
 
 - **Reddit** allows only a few anonymous RSS requests a minute per IP, so without an API ID each
@@ -50,7 +64,16 @@ Needs the Android SDK (`local.properties` → `sdk.dir`) and JDK 17+. On this PC
 heavy -m 8G -- ./gradlew assembleRelease
 ```
 
-The APK lands in `app/build/outputs/apk/release/app-release.apk`. Release builds are signed with
+The APK lands in `app/build/outputs/apk/release/app-release.apk`. To publish a version, bump
+`versionCode`/`versionName` in `app/build.gradle.kts`, commit, then run
+`scripts/release.sh NOTES.md`: it builds, checks the APK is signed with the release key, writes
+`scout.json` and creates the GitHub release that phones update from.
+
+To test the updater against a local server instead of GitHub, build with
+`-Pscout.versionCode=1 -Pscout.versionName=1.0.9-test -Pscout.updateApi=http://10.0.2.2:8799/latest`
+and serve a GitHub-style release JSON plus `scout.apk`/`scout.json` from that host.
+
+Release builds are signed with
 `~/.android/scout-release.jks`; the passwords are read from `keystore.properties` here or
 `~/.android/scout-keystore.properties`. Keep that key: updates only install over the phone's copy
 when they're signed with it.

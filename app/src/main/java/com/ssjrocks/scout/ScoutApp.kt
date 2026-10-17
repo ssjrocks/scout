@@ -23,6 +23,11 @@ class ScoutApp : Application(), ImageLoaderFactory {
         repo = Repo(this)
         val nm = getSystemService(NotificationManager::class.java)
         nm.createNotificationChannel(
+            NotificationChannel(UPDATES, "App updates", NotificationManager.IMPORTANCE_LOW).apply {
+                description = "New versions of Scout from GitHub"
+            },
+        )
+        nm.createNotificationChannel(
             NotificationChannel(ALERTS, "Keyword alerts", NotificationManager.IMPORTANCE_DEFAULT).apply {
                 description = "New stories that match your alert words"
             },
@@ -44,5 +49,6 @@ class ScoutApp : Application(), ImageLoaderFactory {
 
     companion object {
         const val ALERTS = "alerts"
+        const val UPDATES = "updates"
     }
 }

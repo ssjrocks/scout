@@ -57,6 +57,16 @@ class MainActivity : ComponentActivity() {
         setContent { App(vm) }
     }
 
+    override fun onStart() {
+        super.onStart()
+        com.ssjrocks.scout.net.Updater.foreground = true
+    }
+
+    override fun onStop() {
+        com.ssjrocks.scout.net.Updater.foreground = false
+        super.onStop()
+    }
+
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         handleIntent(intent)
@@ -64,6 +74,7 @@ class MainActivity : ComponentActivity() {
 
     private fun handleIntent(i: Intent?) {
         when (i?.action) {
+            ACTION_INSTALL_UPDATE -> vm.checkForUpdate(installIfFound = true)
             ACTION_SEARCH -> if (vm.screens.lastOrNull() != Screen.Search) vm.push(Screen.Search)
             ACTION_OPEN_STORY -> {
                 val url = i.getStringExtra(EXTRA_URL) ?: return
@@ -87,6 +98,7 @@ class MainActivity : ComponentActivity() {
 
     companion object {
         const val ACTION_SEARCH = "com.ssjrocks.scout.SEARCH"
+        const val ACTION_INSTALL_UPDATE = "com.ssjrocks.scout.INSTALL_UPDATE"
         const val ACTION_OPEN_STORY = "com.ssjrocks.scout.OPEN_STORY"
         const val EXTRA_URL = "url"
         const val EXTRA_ID = "id"

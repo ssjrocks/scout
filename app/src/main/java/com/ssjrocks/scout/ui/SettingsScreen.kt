@@ -216,6 +216,17 @@ fun SettingsScreen(vm: MainViewModel) {
             item { ClickRow("Reset learned interests", "Keeps your follows and blocks") { vm.repo.resetLearning(); msg("Learned interests reset") } }
             item { ClickRow("Show the welcome card again") { vm.repo.update { it.copy(showWelcome = true) }; vm.pop() } }
 
+            item { SectionTitle("App updates") }
+            item {
+                SwitchRow(
+                    "Update automatically",
+                    "Checks GitHub for new releases and installs them in the background (needs background refresh on)",
+                    s.autoUpdate,
+                ) { v -> vm.repo.update { it.copy(autoUpdate = v) } }
+            }
+            item { ClickRow("Check for updates now", "You have Scout ${BuildConfig.VERSION_NAME}") { msg("Checking GitHub…"); vm.checkForUpdate() } }
+            item { ClickRow("Release notes and downloads", "github.com/ssjrocks/scout/releases") { Links.openExternal(ctx, com.ssjrocks.scout.net.Updater.RELEASES_PAGE) } }
+
             item { SectionTitle("Backup") }
             item { ClickRow("Export settings", "Sources, blocks, interests and options as a JSON file") { exportBackup.launch("scout-settings.json") } }
             item { ClickRow("Restore settings") { importBackup.launch(arrayOf("application/json", "text/plain", "*/*")) } }
