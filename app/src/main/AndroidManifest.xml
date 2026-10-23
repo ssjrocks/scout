@@ -73,7 +73,10 @@
             </intent-filter>
             <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_info" />
         </receiver>
-        <!-- Crash and problem reports to ssjrocks.com (~/dev/app-reports) -->
+        <!-- Crash and problem reports (~/dev/app-reports). The URL comes from the build. -->
+        <meta-data
+            android:name="com.ssjrocks.appreports.URL"
+            android:value="${appReportsUrl}" />
         <provider
             android:name="com.ssjrocks.appreports.AppReportsInit"
             android:authorities="${applicationId}.appreports"

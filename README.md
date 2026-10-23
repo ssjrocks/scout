@@ -50,8 +50,7 @@ Scout updates itself from this repo's releases (Settings → App updates):
 ## Crash reports
 
 From 1.2.0, if Scout crashes or freezes it sends a report the next time it opens, to
-`https://ssjrocks.com/api/reports/` (the shared reporter from
-[ssjrocks/app-reports](https://github.com/ssjrocks/app-reports)). A report holds the error and stack
+the developer's server. A report holds the error and stack
 trace, Scout's recent log lines, the phone model and Android version, the app version and a random
 install id. It doesn't include what you read, follow or block. **Settings → About → Report a problem**
 sends the same with your note.
